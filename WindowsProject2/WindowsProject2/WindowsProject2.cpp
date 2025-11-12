@@ -83,7 +83,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         SetBkMode(hdc, TRANSPARENT);        // Fond transparent
 
         // Affiche le texte centré
-        DrawText(hdc, g_texteTaille.c_str(), -1, &rect, DT_LEFT | DT_TOP | DT_SINGLELINE);
+        DrawText(hdc, g_texteTaille.c_str(), -1, &rect, DT_LEFT | DT_TOP | DT_END_ELLIPSIS);
 
         EndPaint(hwnd, &ps);
     }
