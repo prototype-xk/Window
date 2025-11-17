@@ -287,7 +287,7 @@ std::wstring ChoisirFichier(HWND hwnd)
     OPENFILENAME ofn = {};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hwnd;
-    ofn.lpstrFilter = L"Images JPG\0*.jpg;*.jpeg;*.JPG\0Toutes les images\0";
+    ofn.lpstrFilter = L"Images JPEG\0*.jpg;*.jpeg;*.JPG\0Toutes les images\0";
     ofn.lpstrFile = filename;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
