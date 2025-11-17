@@ -23,7 +23,6 @@ HWND hButton = NULL;
 HWND hButtonSave = NULL;
 HWND hButtonAddCOM = NULL;
 HWND hEdit = NULL;
-HWND hCOMDisplay = NULL;  // zone lecture seule
 Gdiplus::Image* g_pImage = nullptr;
 bool g_showImage = false;
 int g_clientWidth = 0;
@@ -93,6 +92,23 @@ std::string ReadCOMSegment(const std::wstring& path)
     return "";
 }
 
+std::wstring CesarEncrypt(const std::wstring& message, int shift) {
+    // Mise du shift entre 0 et 26
+    shift = (shift % 26 + 26) % 26;
+    std::wstring result;
+    for (size_t i = 0; i < message.size(); i++) {
+        wchar_t c = message[i];
+        if (c >= L'a' && c <= L'z') {
+            c = L'a' + (c - L'a' + shift) % 26;
+        }
+        else if (c >= L'A' && c <= L'Z') {
+            c = L'A' + (c - L'A' + shift) % 26;
+        }
+        result += c;
+    }
+    return result;
+}
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
@@ -154,11 +170,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             10, 60, 410, 50, hwnd, (HMENU)2,
             (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
 
-        hCOMDisplay = CreateWindow(L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_MULTILINE | ES_READONLY | WS_VSCROLL,
-            10, 160, 410, 50, hwnd, (HMENU)5,
-            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
-
         return 0;
 
     case WM_COMMAND:
@@ -179,7 +190,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     // Lire le COM et afficher
                     std::string comText = ReadCOMSegment(g_imagePath);
                     std::wstring wcomText(comText.begin(), comText.end());
-                    SetWindowTextW(hCOMDisplay, wcomText.c_str());
+                    SetWindowTextW(hEdit, wcomText.c_str());
                 }
                 else
                 {
@@ -218,7 +229,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 std::wstring outPath = g_imagePath.substr(0, g_imagePath.find_last_of(L'.')) + L"_COM.jpg";
                 if (AddComSegment(g_imagePath, outPath, texte))
-                    MessageBox(hwnd, L"Commentaire COM ajouté !", L"Succès", MB_OK);
+                    MessageBox(hwnd, L"Commentaire COM ajoute !", L"Succes", MB_OK);
                 else
                     MessageBox(hwnd, L"Erreur lors de l'ajout du COM", L"Erreur", MB_OK);
             }
