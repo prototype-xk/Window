@@ -32,35 +32,39 @@ std::wstring g_imagePath = L"";
 // --- Ajouter un COM dans un JPEG ---
 bool AddComSegment(const std::wstring& inputPath, const std::wstring& outputPath, const std::string& comment)
 {
-    std::ifstream ifs(std::string(inputPath.begin(), inputPath.end()), std::ios::binary | std::ios::ate);
-    if (!ifs) return false;
+    std::ifstream ifs(
+        std::string(inputPath.begin(), inputPath.end()),
+        std::ios::binary | std::ios::ate
+    );
 
-    size_t size = ifs.tellg();
+    if (!ifs) {
+        return false;
+    }
+    size_t fileSize = static_cast<size_t>(ifs.tellg());
     ifs.seekg(0, std::ios::beg);
+    std::vector<uint8_t> buffer(fileSize);
 
-    std::vector<uint8_t> bytes(size);
-    ifs.read(reinterpret_cast<char*>(bytes.data()), size);
+    if (!ifs.read(reinterpret_cast<char*>(buffer.data()), fileSize)){
+        return false;
+    }
     ifs.close();
-
+    const uint8_t* comData = reinterpret_cast<const uint8_t*>(comment.data());
+    size_t comSize = comment.size();
+    const char header[4] = { 'C','O','M','T' };
     std::vector<uint8_t> comSegment;
-    comSegment.push_back(0xFF);
-    comSegment.push_back(0xFE);
-
-    uint16_t segSize = static_cast<uint16_t>(comment.size() + 2);
-    comSegment.push_back((segSize >> 8) & 0xFF);
-    comSegment.push_back(segSize & 0xFF);
-
-    comSegment.insert(comSegment.end(), comment.begin(), comment.end());
-
-    std::vector<uint8_t> newBytes;
-    newBytes.push_back(bytes[0]); // FF
-    newBytes.push_back(bytes[1]); // D8
-    newBytes.insert(newBytes.end(), comSegment.begin(), comSegment.end());
-    newBytes.insert(newBytes.end(), bytes.begin() + 2, bytes.end());
-
-    std::ofstream ofs(std::string(outputPath.begin(), outputPath.end()), std::ios::binary);
-    if (!ofs) return false;
-    ofs.write(reinterpret_cast<char*>(newBytes.data()), newBytes.size());
+    comSegment.insert(comSegment.end(), header, header + 4);
+    uint32_t size32 = static_cast<uint32_t>(comSize);
+    comSegment.push_back(static_cast<uint8_t>(size32 & 0xFF));
+    comSegment.push_back(static_cast<uint8_t>((size32 >> 8) & 0xFF));
+    comSegment.push_back(static_cast<uint8_t>((size32 >> 16) & 0xFF));
+    comSegment.push_back(static_cast<uint8_t>((size32 >> 24) & 0xFF));
+    comSegment.insert(comSegment.end(), comData, comData + comSize);
+    std::ofstream ofs(
+        std::string(outputPath.begin(), outputPath.end()),
+        std::ios::binary
+    );
+    ofs.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+    ofs.write(reinterpret_cast<const char*>(comSegment.data()), comSegment.size());
     ofs.close();
     return true;
 }
@@ -90,6 +94,41 @@ std::string ReadCOMSegment(const std::wstring& path)
         }
     }
     return "";
+}
+
+std::wstring DetectImageFormat(const std::wstring& path) {
+    std::ifstream file(std::string(path.begin(), path.end()), std::ios::binary);
+    if (!file) {
+        return L"UNKNOW";
+    }
+    char buffer[12] = { 0 };
+    file.read(buffer, 12);
+
+    //JPEG
+    if (buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF)
+        return L"JPEG";
+
+    // PNG
+    if (buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E &&
+        buffer[3] == 0x47 && buffer[4] == 0x0D && buffer[5] == 0x0A &&
+        buffer[6] == 0x1A && buffer[7] == 0x0A)
+        return L"PNG";
+
+    // BMP
+    if (buffer[0] == 'B' && buffer[1] == 'M')
+        return L"BPM";
+
+    // GIF
+    if (buffer[0] == 'G' && buffer[1] == 'I' &&
+        buffer[2] == 'F' && buffer[3] == '8')
+        return L"GIF";
+
+    // WEBP
+    if (buffer[0] == 'R' && buffer[1] == 'I' && buffer[2] == 'F' && buffer[3] == 'F' &&
+        buffer[8] == 'W' && buffer[9] == 'E' && buffer[10] == 'B' && buffer[11] == 'P')
+        return L"WEBP";
+
+    return L"UNKNOW";
 }
 
 std::wstring CesarEncrypt(const std::wstring& message, int shift) {
@@ -180,6 +219,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             g_imagePath = ChoisirFichier(hwnd);
             if (!g_imagePath.empty())
             {
+                std::wstring format = DetectImageFormat(g_imagePath);
+                MessageBox(hwnd, format.c_str(), L"Format détecté", MB_OK);
                 if (g_pImage) { delete g_pImage; g_pImage = nullptr; }
                 g_pImage = Gdiplus::Image::FromFile(g_imagePath.c_str());
                 if (g_pImage && g_pImage->GetLastStatus() == Gdiplus::Ok)
