@@ -19,10 +19,10 @@ std::wstring ChoisirFichier(HWND hwnd);
 // Variables globales
 std::wstring g_texteTaille = L"Taille : Inconue";
 std::wstring g_texteSauvegarder = L"";
-HWND hButton = NULL;
-HWND hButtonSave = NULL;
-HWND hButtonAddCOM = NULL;
-HWND hEdit = NULL;
+HWND hButton = nullptr;
+HWND hButtonSave = nullptr;
+HWND hButtonAddCOM = nullptr;
+HWND hEdit = nullptr;
 Gdiplus::Image* g_pImage = nullptr;
 bool g_showImage = false;
 int g_clientWidth = 0;
@@ -96,40 +96,51 @@ std::string ReadCOMSegment(const std::wstring& path)
     return "";
 }
 
-std::wstring DetectImageFormat(const std::wstring& path) {
-    std::ifstream file(std::string(path.begin(), path.end()), std::ios::binary);
+std::wstring DetectImageFormat(const std::wstring& path)
+{
+    // OUVERTURE UNICODE (IMPORTANT)
+    std::ifstream file(path, std::ios::binary);
     if (!file) {
-        return L"UNKNOW";
+        return L"UNKNOW Version";
     }
+
+    // LECTURE DES 12 PREMIERS OCTETS
     char buffer[12] = { 0 };
     file.read(buffer, 12);
+    std::streamsize bytesRead = file.gcount();
+    if (bytesRead < 12) {
+        return L"UNKNOW Version";
+    }
 
-    //JPEG
-    if (buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF)
+    // JPEG : FF D8 FF
+    if ((unsigned char)buffer[0] == 0xFF &&
+        (unsigned char)buffer[1] == 0xD8 &&
+        (unsigned char)buffer[2] == 0xFF)
         return L"JPEG";
 
-    // PNG
-    if (buffer[0] == 0x89 && buffer[1] == 0x50 && buffer[2] == 0x4E &&
-        buffer[3] == 0x47 && buffer[4] == 0x0D && buffer[5] == 0x0A &&
+    // PNG : 89 50 4E 47 0D 0A 1A 0A
+    if ((unsigned char)buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' &&
+        buffer[3] == 'G' && buffer[4] == 0x0D && buffer[5] == 0x0A &&
         buffer[6] == 0x1A && buffer[7] == 0x0A)
         return L"PNG";
 
-    // BMP
+    // BMP : 'B' 'M'
     if (buffer[0] == 'B' && buffer[1] == 'M')
-        return L"BPM";
+        return L"BMP";
 
-    // GIF
+    // GIF : "GIF8"
     if (buffer[0] == 'G' && buffer[1] == 'I' &&
         buffer[2] == 'F' && buffer[3] == '8')
         return L"GIF";
 
-    // WEBP
+    // WEBP : "RIFF....WEBP"
     if (buffer[0] == 'R' && buffer[1] == 'I' && buffer[2] == 'F' && buffer[3] == 'F' &&
         buffer[8] == 'W' && buffer[9] == 'E' && buffer[10] == 'B' && buffer[11] == 'P')
-        return L"WEBP";
+        return L"WEBP n'est pas supporter par GDI+, aucune affichage de l'image";
 
-    return L"UNKNOW";
+    return L"UNKNOW Version";
 }
+
 
 std::wstring CesarEncrypt(const std::wstring& message, int shift) {
     // Mise du shift entre 0 et 26
@@ -165,7 +176,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     HWND hwnd = CreateWindowEx(
         0, CLASS_NAME, L"Fenetre de Test", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-        NULL, NULL, hInstance, NULL
+        nullptr, nullptr, hInstance, nullptr
     );
 
     if (!hwnd) return 0;
@@ -173,7 +184,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ShowWindow(hwnd, nCmdShow);
 
     MSG msg = {};
-    while (GetMessage(&msg, NULL, 0, 0) > 0)
+    while (GetMessage(&msg, nullptr, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -191,23 +202,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hButton = CreateWindow(L"BUTTON", L"Selectionner votre image",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             10, 15, 200, 30, hwnd, (HMENU)1,
-            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), nullptr);
 
         hButtonSave = CreateWindow(L"BUTTON", L"Sauvegarder Votre Texte",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             10, 120, 200, 30, hwnd, (HMENU)3,
-            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), nullptr);
 
         hButtonAddCOM = CreateWindow(L"BUTTON", L"Ajouter commentaire COM",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             220, 15, 200, 30, hwnd, (HMENU)4,
-            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), nullptr);
 
         hEdit = CreateWindow(L"EDIT", L"",
             WS_CHILD | WS_VISIBLE | WS_BORDER |
             ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL,
             10, 60, 410, 50, hwnd, (HMENU)2,
-            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), nullptr);
 
         return 0;
 
@@ -220,7 +231,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (!g_imagePath.empty())
             {
                 std::wstring format = DetectImageFormat(g_imagePath);
-                MessageBox(hwnd, format.c_str(), L"Format détecté", MB_OK);
+                MessageBox(hwnd, format.c_str(), L"Format detecte", MB_OK);
                 if (g_pImage) { delete g_pImage; g_pImage = nullptr; }
                 g_pImage = Gdiplus::Image::FromFile(g_imagePath.c_str());
                 if (g_pImage && g_pImage->GetLastStatus() == Gdiplus::Ok)
@@ -330,7 +341,7 @@ void OnSize(HWND hwnd, UINT flag, int width, int height)
     g_texteTaille = L"Taille : " + std::to_wstring(width) + L" x " + std::to_wstring(height);
     g_clientHeight = height;
     g_clientWidth = width;
-    InvalidateRect(hwnd, NULL, TRUE);
+    InvalidateRect(hwnd, nullptr, TRUE);
 }
 
 std::wstring ChoisirFichier(HWND hwnd)
@@ -339,7 +350,8 @@ std::wstring ChoisirFichier(HWND hwnd)
     OPENFILENAME ofn = {};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hwnd;
-    ofn.lpstrFilter = L"Images JPEG\0*.jpg;*.jpeg;*.JPG\0Toutes les images\0";
+    ofn.lpstrFilter = L"Images (JPG, PNG, BMP, GIF, WEBP)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp\0"
+        L"Tous les fichiers\0*.*\0";
     ofn.lpstrFile = filename;
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
