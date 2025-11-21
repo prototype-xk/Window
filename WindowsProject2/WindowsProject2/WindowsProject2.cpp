@@ -101,7 +101,7 @@ std::wstring DetectImageFormat(const std::wstring& path)
     // OUVERTURE UNICODE (IMPORTANT)
     std::ifstream file(path, std::ios::binary);
     if (!file) {
-        return L"UNKNOW Version";
+        return L"UNKNOW";
     }
 
     // LECTURE DES 12 PREMIERS OCTETS
@@ -116,27 +116,27 @@ std::wstring DetectImageFormat(const std::wstring& path)
     if ((unsigned char)buffer[0] == 0xFF &&
         (unsigned char)buffer[1] == 0xD8 &&
         (unsigned char)buffer[2] == 0xFF)
-        return L"JPEG";
+        return L"JPEG COM Possible d'etre ajouter";
 
     // PNG : 89 50 4E 47 0D 0A 1A 0A
     if ((unsigned char)buffer[0] == 0x89 && buffer[1] == 'P' && buffer[2] == 'N' &&
         buffer[3] == 'G' && buffer[4] == 0x0D && buffer[5] == 0x0A &&
         buffer[6] == 0x1A && buffer[7] == 0x0A)
-        return L"PNG";
+        return L"PNG COM Non Possible d'etre ajouter";
 
     // BMP : 'B' 'M'
     if (buffer[0] == 'B' && buffer[1] == 'M')
-        return L"BMP";
+        return L"BMP COM Non Possible d'etre ajouter";
 
     // GIF : "GIF8"
     if (buffer[0] == 'G' && buffer[1] == 'I' &&
         buffer[2] == 'F' && buffer[3] == '8')
-        return L"GIF";
+        return L"GIF COM Non Possible d'etre ajouter";
 
     // WEBP : "RIFF....WEBP"
     if (buffer[0] == 'R' && buffer[1] == 'I' && buffer[2] == 'F' && buffer[3] == 'F' &&
         buffer[8] == 'W' && buffer[9] == 'E' && buffer[10] == 'B' && buffer[11] == 'P')
-        return L"WEBP n'est pas supporter par GDI+, aucune affichage de l'image";
+        return L"WEBP n'est pas supporter par GDI+, aucune affichage de l'image, COM Non Possible d'etre ajouter";
 
     return L"UNKNOW Version";
 }
@@ -174,7 +174,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     RegisterClass(&wc);
 
     HWND hwnd = CreateWindowEx(
-        0, CLASS_NAME, L"Fenetre de Test", WS_OVERLAPPEDWINDOW,
+        0, CLASS_NAME, L"Steganographie G-Tech1", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         nullptr, nullptr, hInstance, nullptr
     );
