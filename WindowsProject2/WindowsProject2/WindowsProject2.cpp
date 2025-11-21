@@ -30,33 +30,37 @@ std::wstring g_imagePath = L"";
 // --- Ajouter un COM dans un JPEG ---
 bool AddComSegment(const std::wstring& inputPath, const std::wstring& outputPath, const std::string& comment)
 {
+    // ouverture en binaire, mise du curseur a la fin
     std::ifstream ifs(std::string(inputPath.begin(), inputPath.end()), std::ios::binary);
-    if (!ifs) return false;
+    if (!ifs) {
+        return false; // verifie d'ouverture
+    }
 
     std::vector<uint8_t> data((std::istreambuf_iterator<char>(ifs)),
-        std::istreambuf_iterator<char>());
+        std::istreambuf_iterator<char>()); // lecture de tout les octet 1 par 1 
+    // met l'image dans un vecteur d'octets
     ifs.close();
 
     if (data.size() < 4 || data[0] != 0xFF || data[1] != 0xD8)
-        return false; // Pas un JPEG
+        return false; // Verifie si JPG
 
     std::vector<uint8_t> com;
     com.push_back(0xFF);
     com.push_back(0xFE); // Marqueur COM
 
-    uint16_t size = static_cast<uint16_t>(2 + comment.size());
+    uint16_t size = static_cast<uint16_t>(2 + comment.size()); // Taille du COM
     com.push_back(size >> 8);
     com.push_back(size & 0xFF);
 
-    com.insert(com.end(), comment.begin(), comment.end());
+    com.insert(com.end(), comment.begin(), comment.end()); // ajoute com saisie
 
     std::vector<uint8_t> output;
-    output.insert(output.end(), data.begin(), data.begin() + 2);
-    output.insert(output.end(), com.begin(), com.end());
-    output.insert(output.end(), data.begin() + 2, data.end());
+    output.insert(output.end(), data.begin(), data.begin() + 2);//debut de l'image
+    output.insert(output.end(), com.begin(), com.end());        //COM
+    output.insert(output.end(), data.begin() + 2, data.end());  //reste de l'image
 
     std::ofstream ofs(std::string(outputPath.begin(), outputPath.end()), std::ios::binary);
-    if (!ofs) return false;
+    if (!ofs) return false;//verif fichier sortie
 
     ofs.write(reinterpret_cast<const char*>(output.data()), output.size());
     ofs.close();
@@ -68,7 +72,7 @@ bool AddComSegment(const std::wstring& inputPath, const std::wstring& outputPath
 std::string ReadCOMSegment(const std::wstring& path)
 {
     std::ifstream ifs(std::string(path.begin(), path.end()), std::ios::binary);
-    if (!ifs) return "";
+    if (!ifs) return ""; //Echec
 
     std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(ifs)),
         std::istreambuf_iterator<char>());
@@ -76,7 +80,7 @@ std::string ReadCOMSegment(const std::wstring& path)
 
     for (size_t i = 0; i + 4 < bytes.size(); i++)
     {
-        if (bytes[i] == 0xFF && bytes[i + 1] == 0xFE)
+        if (bytes[i] == 0xFF && bytes[i + 1] == 0xFE) // cherche segment COM
         {
             uint16_t size = (bytes[i + 2] << 8) | bytes[i + 3];
             size_t start = i + 4;
@@ -86,7 +90,7 @@ std::string ReadCOMSegment(const std::wstring& path)
                 return std::string(bytes.begin() + start, bytes.begin() + end);
         }
     }
-    return "";
+    return ""; // Aucun Com
 }
 
 std::wstring DetectImageFormat(const std::wstring& path)
@@ -98,24 +102,24 @@ std::wstring DetectImageFormat(const std::wstring& path)
     file.read(bytesVerif, 12);
     std::streamsize bytesRead = file.gcount();
     if (bytesRead < 12) return L"UNKNOW Version";
-
+    // Image JPEG / JPG
     if ((unsigned char)bytesVerif[0] == 0xFF &&
         (unsigned char)bytesVerif[1] == 0xD8 &&
         (unsigned char)bytesVerif[2] == 0xFF)
         return L"JPEG COM Possible d'etre ajouter";
-
+    // Image PNG
     if ((unsigned char)bytesVerif[0] == 0x89 && bytesVerif[1] == 'P' && bytesVerif[2] == 'N' &&
         bytesVerif[3] == 'G' && bytesVerif[4] == 0x0D && bytesVerif[5] == 0x0A &&
         bytesVerif[6] == 0x1A && bytesVerif[7] == 0x0A)
         return L"PNG COM Non Possible d'etre ajouter";
-
+    // Image BMP
     if (bytesVerif[0] == 'B' && bytesVerif[1] == 'M')
         return L"BMP COM Non Possible d'etre ajouter";
-
+    // Image GIF
     if (bytesVerif[0] == 'G' && bytesVerif[1] == 'I' &&
         bytesVerif[2] == 'F' && bytesVerif[3] == '8')
         return L"GIF COM Non Possible d'etre ajouter";
-
+    // Image WEBP
     if (bytesVerif[0] == 'R' && bytesVerif[1] == 'I' && bytesVerif[2] == 'F' && bytesVerif[3] == 'F' &&
         bytesVerif[8] == 'W' && bytesVerif[9] == 'E' && bytesVerif[10] == 'B' && bytesVerif[11] == 'P')
         return L"WEBP n'est pas supporter par GDI+, COM Non Possible d'etre ajouter";
@@ -123,29 +127,31 @@ std::wstring DetectImageFormat(const std::wstring& path)
     return L"UNKNOW Version";
 }
 
-std::wstring CesarEncrypt(const std::wstring& message, int shift) {
-    // Mise du shift entre 0 et 26
-    shift = (shift % 26 + 26) % 26;
-    std::wstring result;
-    for (size_t i = 0; i < message.size(); i++) {
-        wchar_t c = message[i];
-        if (c >= L'a' && c <= L'z') {
-            c = L'a' + (c - L'a' + shift) % 26;
-        }
-        else if (c >= L'A' && c <= L'Z') {
-            c = L'A' + (c - L'A' + shift) % 26;
-        }
-        result += c;
-    }
-    return result;
-}
+//std::wstring CesarEncrypt(const std::wstring& message, int shift) {
+//    // Mise du shift entre 0 et 26
+//    shift = (shift % 26 + 26) % 26;
+//    std::wstring result;
+//    for (size_t i = 0; i < message.size(); i++) {
+//        wchar_t c = message[i];
+//        if (c >= L'a' && c <= L'z') {
+//            c = L'a' + (c - L'a' + shift) % 26;
+//        }
+//        else if (c >= L'A' && c <= L'Z') {
+//            c = L'A' + (c - L'A' + shift) % 26;
+//        }
+//        result += c;
+//    }
+//    return result;
+//}
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+    // Initialisation GDI+
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
+    // Definition de classe Fenetre
     const wchar_t CLASS_NAME[] = L"Sample Window Class";
     WNDCLASS wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -154,16 +160,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     wc.hbrBackground = CreateSolidBrush(RGB(255, 255, 255));
     RegisterClass(&wc);
 
+    // Create de Fenetre Principale
     HWND hwnd = CreateWindowEx(
         0, CLASS_NAME, L"Steganographie G-Tech1", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         nullptr, nullptr, hInstance, nullptr
     );
 
-    if (!hwnd) return 0;
+    if (!hwnd) return 0; // Echec creation
 
     ShowWindow(hwnd, nCmdShow);
 
+    // Boucle Message
     MSG msg = {};
     while (GetMessage(&msg, nullptr, 0, 0) > 0)
     {
@@ -171,6 +179,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         DispatchMessage(&msg);
     }
 
+    // Fin GDI+
     Gdiplus::GdiplusShutdown(gdiplusToken);
     return 0;
 }
@@ -179,7 +188,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
-    case WM_CREATE:
+    case WM_CREATE: // Creation Boutton + Zone de texte
         hButton = CreateWindow(L"BUTTON", L"Selectionner votre image",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             10, 15, 200, 30, hwnd, (HMENU)1,
@@ -193,7 +202,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hEdit = CreateWindow(L"EDIT", L"",
             WS_CHILD | WS_VISIBLE | WS_BORDER |
             ES_LEFT | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL,
-            10, 60, 410, 50, hwnd, (HMENU)2,
+            10, 60, 410, 500, hwnd, (HMENU)2,
             (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), nullptr);
 
         return 0;
